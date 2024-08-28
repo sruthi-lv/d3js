@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radar and Line Chart</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7; 
+            color: #333; 
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px;
+            margin: 0 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            background-color: lightgray; 
+        }
+
+        
+        button.selected {
+            background-color: red; 
+        }
+
+        
+        #YouTubeButton:not(.selected) {
+            background-color: lightcoral;
+        }
+        #GoogleSearchButton:not(.selected) {
+            background-color: #FFDAB9; 
+        }
+        #GoogleCloudButton:not(.selected) {
+            background-color: lightgreen;
+        }
+        #GoogleAdsButton:not(.selected) {
+            background-color: lightsteelblue;
+        }
+        .chart-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .radar-chart {
+            max-width: 800px;
+        }
+        .line-chart svg {
+            max-width: 600px;
+        }
+        #play-button {
+            display: block;
+            margin: -90px auto 0 175px; 
+            padding: 5px 15px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            background-color: blue;
+        }
+
+        .data-label {
+            font-size: 12px;
+            fill: black;
+        }
+        .tooltip {
+            position: absolute;
+            background: #333;
+            color: #fff;
+            padding: 5px;
+            border-radius: 3px;
+            pointer-events: none;
+            font-size: 12px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="button-container">
+        <button id="YouTubeButton" style="background-color: red;" onclick="updateCharts('YouTube')">YouTube</button>
+        <button id="GoogleSearchButton" style="background-color: orange;" onclick="updateCharts('Google Search')">Google Search</button>
+        <button id="GoogleCloudButton" style="background-color: green;" onclick="updateCharts('Google Cloud')">Google Cloud</button>
+        <button id="GoogleAdsButton" style="background-color: steelblue;" onclick="updateCharts('Google Ads')">Google Ads</button>
+    </div>
+
+    <div class="container">
+        <div class="chart-container radar-chart">
+            <div id="radarChart"></div>
+            <div id="tooltip" class="tooltip"></div>
+        </div>
+
+        <div class="chart-container line-chart">
+            <svg width="500" height="500"></svg>
+            <button id="play-button">Play</button>
+        </div>
+    </div>
+
+    <script>
+        const data = [
+            {
+                name: 'YouTube',
+                revenueOverYears: [
+                    { year: 2019, revenue: 150 },
+                    { year: 2020, revenue: 120 },
+                    { year: 2021, revenue: 170 },
+                    { year: 2022, revenue: 210 },
+                    { year: 2023, revenue: 180 }
+                ],
+                'Revenue': 150,
+                'Expenses': 100,
+                'Profit': 50,
+                'Ad Revenue': 90,
+                'Subscription Revenue': 40,
+                'Operational Costs': 30,
+                'R&D Costs': 20,
+                'Marketing Costs': 10,
+                'Employee Salaries': 25,
+                'Infrastructure Costs': 15,
+                'Net Income': 50,
+            },
+            {
+                name: 'Google Search',
+                revenueOverYears: [
+                    { year: 2019, revenue: 200 },
+                    { year: 2020, revenue: 240 },
+                    { year: 2021, revenue: 150 },
+                    { year: 2022, revenue: 210 },
+                    { year: 2023, revenue: 250 }
+                ],
+                'Revenue': 200,
+                'Expenses': 120,
+                'Profit': 80,
+                'Ad Revenue': 110,
+                'Subscription Revenue': 50,
+                'Operational Costs': 40,
+                'R&D Costs': 25,
+                'Marketing Costs': 15,
+                'Employee Salaries': 35,
+                'Infrastructure Costs': 20,
+                'Net Income': 80,
+            },
+            {
+                name: 'Google Cloud',
+                revenueOverYears: [
+                    { year: 2019, revenue: 180 },
+                    { year: 2020, revenue: 185 },
+                    { year: 2021, revenue: 150 },
+                    { year: 2022, revenue: 195 },
+                    { year: 2023, revenue: 200 }
+                ],
+                'Revenue': 180,
+                'Expenses': 110,
+                'Profit': 70,
+                'Ad Revenue': 100,
+                'Subscription Revenue': 60,
+                'Operational Costs': 35,
+                'R&D Costs': 30,
+                'Marketing Costs': 20,
+                'Employee Salaries': 30,
+                'Infrastructure Costs': 25,
+                'Net Income': 70,
+            },
+            {
+                name: 'Google Ads',
+                revenueOverYears: [
+                    { year: 2019, revenue: 130 },
+                    { year: 2020, revenue: 120 },
+                    { year: 2021, revenue: 150 },
+                    { year: 2022, revenue: 140 },
+                    { year: 2023, revenue: 170 }
+                ],
+                'Revenue': 130,
+                'Expenses': 90,
+                'Profit': 40,
+                'Ad Revenue': 80,
+                'Subscription Revenue': 30,
+                'Operational Costs': 25,
+                'R&D Costs': 15,
+                'Marketing Costs': 10,
+                'Employee Salaries': 20,
+                'Infrastructure Costs': 20,
+                'Net Income': 40,
+            },
+        ];
+
+        const variables = ['Revenue', 'Expenses', 'Profit', 'Ad Revenue', 'Subscription Revenue', 'Operational Costs', 'R&D Costs', 'Marketing Costs', 'Employee Salaries', 'Infrastructure Costs', 'Net Income'];
+        const radarWidth = 700;
+        const radarHeight = 650;
+        const margin = { top: 50, right: 100, bottom: 50, left: 100 };
+        const radius = Math.min(radarWidth / 2, radarHeight / 2) - Math.max(margin.top, margin.right, margin.bottom, margin.left);
+
+        const svgRadar = d3.select('#radarChart')
+            .append('svg')
+            .attr('width', radarWidth + margin.left + margin.right)
+            .attr('height', radarHeight + margin.top + margin.bottom)
+            .append('g')
+            .attr('transform', `translate(${(radarWidth + margin.left) / 2}, ${(radarHeight + margin.top) / 2 - 80})`);
+
+        const angleSlice = Math.PI * 2 / variables.length;
+
+        const radarLine = d3.lineRadial()
+            .curve(d3.curveLinearClosed)
+            .radius(d => radiusScale(d.value))
+            .angle((d, i) => i * angleSlice);
+
+        const radiusScale = d3.scaleLinear()
+            .range([0, radius])
+            .domain([0, 250]);
+
+        const axisGrid = svgRadar.append('g').attr('class', 'axisWrapper');
+
+        axisGrid.selectAll('.levels')
+            .data(d3.range(1, 6).reverse())
+            .enter().append('circle')
+            .attr('class', 'gridCircle')
+            .attr('r', d => radius / 5 * d)
+            .style('fill', '#d9d9d9')  
+            .style('stroke', '#d9d9d9')  
+            .style('fill-opacity', 0.1);
+
+
+        axisGrid.selectAll('.axisLabel')
+            .data(d3.range(1, 6).reverse())
+            .enter().append('text')
+            .attr('class', 'axisLabel')
+            .attr('x', 4)
+            .attr('y', d => -d * radius / 5)
+            .attr('dy', '0.4em')
+            .style('font-size', '10px')
+            .attr('fill', '#333333')
+            .text(d => radiusScale.invert(d * radius / 5));
+
+        const axis = axisGrid.selectAll('.axis')
+            .data(variables)
+            .enter()
+            .append('g')
+            .attr('class', 'axis');
+
+        axis.append('line')
+            .attr('x1', 0)
+            .attr('y1', 0)
+            .attr('x2', (d, i) => radius * Math.cos(angleSlice * i - Math.PI / 2))
+            .attr('y2', (d, i) => radius * Math.sin(angleSlice * i - Math.PI / 2))
+            .attr('class', 'line')
+            .style('stroke', '#d9d9d9')
+            .style('stroke-width', '0.5px');
+
+        axis.append('text')
+            .attr('class', 'legend')
+            .attr('text-anchor', 'middle')
+            .attr('dy', '0.35em')
+            .attr('x', (d, i) => (radius + 20) * Math.cos(angleSlice * i - Math.PI / 2))
+            .attr('y', (d, i) => (radius + 20) * Math.sin(angleSlice * i - Math.PI / 2))
+            .text(d => d)
+            .style('font-size', '12px')
+            .style('fill', '#333333');
+
+        const radarColors = {
+            'YouTube': 'red',
+            'Google Search': 'orange',
+            'Google Cloud': 'green',
+            'Google Ads': 'blue'
+        };
+
+        const tooltip = d3.select('#tooltip');
+
+        function updateCharts(selectedName) {
+                    updateRadarChart(selectedName);
+                    updateLineChart(selectedName);
+                    document.querySelectorAll('.button-container button').forEach(button => {
+                if (button.id === selectedName + 'Button') {
+                    button.classList.add('selected');
+                } else {
+                    button.classList.remove('selected');
+                }
+            });
+        }
+
+        function updateRadarChart(selectedName) {
+            const filteredData = data.find(d => d.name === selectedName);
+            const radarData = variables.map(variable => ({ name: variable, value: filteredData[variable] }));
+
+            svgRadar.selectAll('.radarArea').remove();
+
+            svgRadar.append('path')
+                .datum(radarData)
+                .attr('class', 'radarArea')
+                .attr('d', radarLine)
+                .style('fill', radarColors[selectedName])
+                .style('fill-opacity', 0.5);
+
+            svgRadar.selectAll('.radarStroke').remove();
+
+            svgRadar.append('path')
+                .datum(radarData)
+                .attr('class', 'radarStroke')
+                .attr('d', radarLine)
+                .style('stroke-width', '2px')
+                .style('stroke', radarColors[selectedName])
+                .style('fill', 'none');
+
+            svgRadar.selectAll('.radarCircle').remove();
+
+            svgRadar.selectAll('.radarCircle')
+                .data(radarData)
+                .enter()
+                .append('circle')
+                .attr('class', 'radarCircle')
+                .attr('r', 4)
+                .attr('cx', d => radiusScale(d.value) * Math.cos(angleSlice * variables.indexOf(d.name) - Math.PI / 2))
+                .attr('cy', d => radiusScale(d.value) * Math.sin(angleSlice * variables.indexOf(d.name) - Math.PI / 2))
+                .style('fill', radarColors[selectedName])
+                .style('fill-opacity', 0.8)
+                .on('mouseover', function(event, d) {
+                    tooltip.style('display', 'block')
+                        .html(`<strong>${d.name}:</strong> ${d.value}`)
+                        .style('left', `${event.pageX + 5}px`)
+                        .style('top', `${event.pageY - 28}px`);
+                })
+                .on('mouseout', function() {
+                    tooltip.style('display', 'none');
+                });
+        }
+
+       
+        const svgLine = d3.select(".line-chart svg"),
+      marginLine = { top: 40, right: 30, bottom: 50, left: 40 }; 
+      originalWidth = +svgLine.attr("width");
+      reducedWidth = originalWidth * 0.8; 
+
+const widthLine = reducedWidth - marginLine.left - marginLine.right; 
+const heightLine = +svgLine.attr("height") - marginLine.top - marginLine.bottom - 20; 
+
+const g = svgLine.append("g").attr("transform", `translate(${marginLine.left},${marginLine.top})`);
+
+
+svgLine.append("text")
+    .attr("x", marginLine.left + widthLine / 2)  
+    .attr("y", marginLine.top / 0.8)              
+    .attr("text-anchor", "middle")
+    .style("font-size", "16px")
+    .style("font-weight", "bold")
+    .text("Revenue Over Years");
+
+const x = d3.scaleLinear()
+    .domain([2019, 2023])
+    .range([0, widthLine]);
+
+const y = d3.scaleLinear()
+    .range([heightLine, 0])
+    .domain([0, 300]);
+
+const line = d3.line()
+    .x(d => x(d.year))
+    .y(d => y(d.revenue));
+
+g.append("g")
+    .attr("transform", `translate(0,${heightLine - 60})`)
+    .call(d3.axisBottom(x).ticks(5).tickFormat(d3.format("d")));
+
+
+let path, labels;
+let animationInterval;
+let isPlaying = false;
+
+
+function clearChart() {
+    if (path) path.remove();
+    if (labels) labels.remove();
+}
+
+
+function updateLineChart(selectedName) {
+    clearChart();
+
+    const selectedData = data.find(d => d.name === selectedName).revenueOverYears;
+
+    path = g.append("path")
+        .datum(selectedData)
+        .attr("fill", "none")
+        .attr("stroke", radarColors[selectedName])
+        .attr("stroke-width", 2.5)
+        .attr("d", line);
+
+    labels = g.selectAll(".data-label")
+        .data(selectedData)
+        .enter()
+        .append("text")
+        .attr("class", "data-label")
+        .attr("x", d => x(d.year))
+        .attr("y", d => y(d.revenue) - 10)
+        .text(d => d.revenue);
+}
+
+
+function animateChart() {
+    const selectedButton = document.querySelector('.button-container button[style*="background-color"]');
+    const selectedName = selectedButton ? selectedButton.innerText : 'YouTube';
+    const selectedData = data.find(d => d.name === selectedName).revenueOverYears;
+
+    let index = 0;
+
+    clearChart(); 
+
+    path = g.append("path")
+        .datum([])
+        .attr("fill", "none")
+        .attr("stroke", radarColors[selectedName])
+        .attr("stroke-width", 2.5)
+        .attr("d", line);
+
+    labels = g.selectAll(".data-label")
+        .data([])
+        .enter()
+        .append("text")
+        .attr("class", "data-label");
+
+    animationInterval = setInterval(() => {
+        if (index >= selectedData.length) {
+            clearInterval(animationInterval);
+            isPlaying = false;
+            d3.select("#play-button").text("Play");
+        } else {
+            const partialData = selectedData.slice(0, index + 1);
+            path.attr("d", line(partialData));
+
+            
+            g.selectAll(".data-label").remove();
+
+            labels = g.selectAll(".data-label")
+                .data(partialData)
+                .enter()
+                .append("text")
+                .attr("class", "data-label")
+                .attr("x", d => x(d.year))
+                .attr("y", d => y(d.revenue) - 10)
+                .text(d => d.revenue);
+
+            index++;
+        }
+    }, 500);
+}
+
+
+document.getElementById("play-button").addEventListener("click", function() {
+    if (isPlaying) {
+        clearInterval(animationInterval);
+        isPlaying = false;
+        d3.select("#play-button").text("Play");
+    } else {
+        animateChart();
+        isPlaying = true;
+        d3.select("#play-button").text("Pause");
+    }
+});
+
+
+document.querySelectorAll(".button-container button").forEach(button => {
+    button.addEventListener("click", function() {
+        document.querySelectorAll(".button-container button").forEach(btn => btn.style.backgroundColor = '');
+        this.style.backgroundColor = radarColors[this.innerText];
+        updateLineChart(this.innerText);
+    });
+});
+
+    updateCharts('YouTube');
+
+    </script>
+</body>
+</html>
